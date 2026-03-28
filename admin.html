@@ -219,6 +219,14 @@ window.launchTournament=async function(){
 onValue(tRef,snap=>{
   state=snap.val();
   if(state&&state.started){
+    // Normalize bracket arrays (Firebase may convert arrays to objects)
+    if(state.bk){
+      if(state.bk.qf&&!Array.isArray(state.bk.qf))state.bk.qf=Object.values(state.bk.qf);
+      if(state.bk.sf&&!Array.isArray(state.bk.sf))state.bk.sf=Object.values(state.bk.sf);
+    }
+    // Normalize match arrays
+    if(state.mA&&!Array.isArray(state.mA))state.mA=Object.values(state.mA);
+    if(state.mBp&&!Array.isArray(state.mBp))state.mBp=Object.values(state.mBp);
     document.getElementById('setup-section').classList.add('hidden');
     document.getElementById('match-section').classList.remove('hidden');
     document.getElementById('danger-section').classList.remove('hidden');
@@ -253,6 +261,13 @@ function renderMatches(){
 
 function renderPoolMatches(elId,matches,pool){
   const el=document.getElementById(elId);
+  // Save current input values before re-render
+  const saved={};
+  matches.forEach((_,idx)=>{
+    const ia=document.getElementById(`p${pool}a${idx}`);
+    const ib=document.getElementById(`p${pool}b${idx}`);
+    if(ia||ib)saved[idx]={a:ia?ia.value:'0',b:ib?ib.value:'0'};
+  });
   const done=matches.filter(m=>m.done).length;
   el.innerHTML=`<div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--mut);margin-bottom:10px">${done}/${matches.length} matchs joués</div>`+
   matches.map((m,idx)=>{
@@ -271,6 +286,13 @@ function renderPoolMatches(elId,matches,pool){
     </div>`;
   }).join('');
   if(done===matches.length){el.innerHTML+=`<div style="text-align:center;color:var(--grn);font-family:'Orbitron',sans-serif;font-size:.7rem;letter-spacing:2px;margin:14px 0">✓ POULE ${pool} TERMINÉE</div>`}
+  // Restore input values that were being typed
+  Object.entries(saved).forEach(([idx,v])=>{
+    const ia=document.getElementById(`p${pool}a${idx}`);
+    const ib=document.getElementById(`p${pool}b${idx}`);
+    if(ia&&v.a!=='0')ia.value=v.a;
+    if(ib&&v.b!=='0')ib.value=v.b;
+  });
 }
 
 // ============================================================
@@ -293,11 +315,13 @@ window.submitScore=async function(pool,idx){
   s[m.tB].rw+=b;s[m.tB].rl+=a;
 
   // Check if pools complete → generate bracket
-  if(state.mA.every(x=>x.done)&&state.mBp.every(x=>x.done)&&(!state.bk.qf[0])){
+  const qf=state.bk&&state.bk.qf;
+  const bracketReady=!qf||!Array.isArray(qf)||!qf[0]||!qf[0].tA;
+  if(state.mA.every(x=>x.done)&&state.mBp.every(x=>x.done)&&bracketReady){
     generateBracket();
   }
 
-  try{await set(tRef,state);setStatus('Score enregistré !')}
+  try{await set(tRef,state);setStatus('Score enregistré !');renderBracketAdmin()}
   catch(e){setStatus('Erreur : '+e.message,true)}
 };
 
@@ -345,10 +369,16 @@ function generateBracket(){
 
 function renderBracketAdmin(){
   const el=document.getElementById('tBK');
-  if(!state||!state.bk||!state.bk.qf||!state.bk.qf[0]){
+  if(!state||!state.bk){
     el.innerHTML=`<div style="text-align:center;color:var(--mut);font-family:'Share Tech Mono',monospace;font-size:.7rem;padding:20px">Terminez les poules pour débloquer le bracket</div>`;return;
   }
+  // Normalize
+  if(state.bk.qf&&!Array.isArray(state.bk.qf))state.bk.qf=Object.values(state.bk.qf);
+  if(state.bk.sf&&!Array.isArray(state.bk.sf))state.bk.sf=Object.values(state.bk.sf);
   const bk=state.bk;
+  if(!bk.qf||!bk.qf[0]||!bk.qf[0].tA){
+    el.innerHTML=`<div style="text-align:center;color:var(--mut);font-family:'Share Tech Mono',monospace;font-size:.7rem;padding:20px">Terminez les poules pour débloquer le bracket</div>`;return;
+  }
   function rbA(m,rd,i){
     if(!m||!m.tA)return`<div class="bm"><div class="bm-l">${m?m.l:'—'}</div><div class="bm-t" style="color:var(--mut)">TBD</div><div class="bm-m">VS</div><div class="bm-t" style="color:var(--mut)">TBD</div></div>`;
     const wA=m.done&&m.sA>m.sB,wB=m.done&&m.sB>m.sA;
