@@ -334,43 +334,49 @@ function renderBracket(){
   }
   const bk=state.bk;
 
-  function teamSlot(name,won,done,sc){
+  // Build set of "newly advanced" teams: winners who appear in next round
+  const advancedTeams=new Set();
+  if(bk.qf&&bk.sf){
+    bk.qf.forEach(m=>{
+      if(m&&m.done){
+        const w=m.sA>m.sB?m.tA:m.tB;
+        // check if this winner appears in SF
+        if(bk.sf.some(s=>s&&(s.tA===w||s.tB===w))) advancedTeams.add(w);
+      }
+    });
+  }
+  if(bk.sf&&bk.fi){
+    bk.sf.forEach(m=>{
+      if(m&&m.done){
+        const w=m.sA>m.sB?m.tA:m.tB;
+        if(bk.fi&&(bk.fi.tA===w||bk.fi.tB===w)) advancedTeams.add(w);
+      }
+    });
+  }
+
+  function teamSlot(name,won,done,sc,isWinner){
     if(!name)return`<div class="bm-t tbd"><span class="tm-name">TBD</span></div>`;
     const logo=teamLogo(name);
-    const img=logo?`<img class="tm-logo" src="${logo}">`:'';
-    const cls='bm-t'+(won?' w':'');
+    const img=logo?`<img class="tm-logo" src="${logo}">`:'' ;
+    // isWinner = this team just advanced (show advance anim)
+    let cls='bm-t';
+    if(won) cls+=' w';
+    if(isWinner) cls+=' just-advanced';
     return`<div class="${cls}">${img}<span class="tm-name">${name}</span>${done?`<span class="sc">${sc}</span>`:''}</div>`;
   }
 
   function matchCard(m,extraClass=''){
-    if(!m||!m.tA)return`<div class="bm${extraClass?(' '+extraClass):''}"><div class="bm-l">—</div>${teamSlot(null)}<div class="bm-sep">VS</div>${teamSlot(null)}</div>`;
+    if(!m||!m.tA)return`<div class="bm${extraClass?' '+extraClass:''}"><div class="bm-l">—</div>${teamSlot(null)}<div class="bm-sep">VS</div>${teamSlot(null)}</div>`;
     const wA=m.done&&m.sA>m.sB,wB=m.done&&m.sB>m.sA;
-    return`<div class="bm${extraClass?(' '+extraClass):''}">
+    // "just-advanced" = winner of THIS match who appears in the NEXT round
+    const advA=wA&&advancedTeams.has(m.tA);
+    const advB=wB&&advancedTeams.has(m.tB);
+    return`<div class="bm${extraClass?' '+extraClass:''}">
       <div class="bm-l">${m.l||''}</div>
-      ${teamSlot(m.tA,wA,m.done,m.sA)}
+      ${teamSlot(m.tA,wA,m.done,m.sA,advA)}
       <div class="bm-sep">VS</div>
-      ${teamSlot(m.tB||null,wB,m.done,m.sB)}
+      ${teamSlot(m.tB||null,wB,m.done,m.sB,advB)}
     </div>`;
-  }
-
-  // SVG connector between columns
-  function connector(nLeft,nRight,color='rgba(0,229,255,.25)'){
-    // Draw lines from nLeft outputs to nRight inputs
-    // nLeft = number of matches on left, nRight = number on right
-    // We produce an SVG that fills the height
-    return`<svg class="bk-svg" viewBox="0 0 32 100" preserveAspectRatio="none" style="position:absolute;left:100%;top:0;height:100%;width:32px;z-index:1;overflow:visible">
-      ${Array.from({length:nRight},(_, ri)=>{
-        const p1y=((ri*2+1)/(nLeft*2))*100;
-        const p2y=((ri+0.5)/(nRight))*100;
-        const p3y=p2y;
-        const p4y_a=((ri*2+1)/(nLeft*2))*100;
-        const p4y_b=((ri*2+2)/(nLeft*2))*100;
-        const midY=(p4y_a+p4y_b)/2;
-        return `<path d="M0,${p4y_a} L16,${p4y_a} L16,${midY}" stroke="${color}" stroke-width="1.5" fill="none" opacity="0.6"/>
-                <path d="M0,${p4y_b} L16,${p4y_b} L16,${midY}" stroke="${color}" stroke-width="1.5" fill="none" opacity="0.6"/>
-                <path d="M16,${midY} L32,${p2y}" stroke="${color}" stroke-width="1.5" fill="none" opacity="0.8"/>`;
-      }).join('')}
-    </svg>`;
   }
 
   let first=null,second=null,third=null;
@@ -380,7 +386,7 @@ function renderBracket(){
   v.innerHTML=`
   <div style="padding:16px 24px 40px;overflow-x:auto">
     <div style="display:flex;align-items:stretch;min-width:860px;gap:0;position:relative">
-      
+
       <!-- QF col -->
       <div style="flex:1.2;display:flex;flex-direction:column;gap:16px;position:relative">
         <div class="round-label qf">QUARTS DE FINALE</div>
@@ -404,19 +410,13 @@ function renderBracket(){
       <div style="flex:1;display:flex;flex-direction:column;position:relative">
         <div class="round-label sf">DEMI-FINALES</div>
         <div style="display:flex;flex-direction:column;gap:0;flex:1;justify-content:space-around">
-          ${bk.sf.map((m,i)=>{
-            const col=i===0?'rgba(0,229,255,.4)':'rgba(255,0,153,.4)';
-            return`<div style="position:relative">${matchCard(m)}</div>`;
-          }).join('')}
+          ${bk.sf.map(m=>`<div style="position:relative">${matchCard(m)}</div>`).join('')}
         </div>
         <!-- connector SF→FI -->
         <svg style="position:absolute;left:100%;top:42px;height:calc(100% - 42px);width:36px;z-index:1;overflow:visible" preserveAspectRatio="none" viewBox="0 0 36 400">
           <path d="M0,100 H18 V200" stroke="rgba(255,214,0,.3)" stroke-width="1.5" fill="none"/>
           <path d="M0,300 H18 V200" stroke="rgba(255,214,0,.3)" stroke-width="1.5" fill="none"/>
           <path d="M18,200 H36" stroke="rgba(255,214,0,.5)" stroke-width="2" fill="none"/>
-          <!-- loser line to petite finale -->
-          <path d="M0,100 H-18 V340 H-54" stroke="rgba(205,127,50,.25)" stroke-width="1" fill="none" stroke-dasharray="4,4"/>
-          <path d="M0,300 H-18 V340 H-54" stroke="rgba(205,127,50,.25)" stroke-width="1" fill="none" stroke-dasharray="4,4"/>
         </svg>
       </div>
 
@@ -440,10 +440,16 @@ function renderBracket(){
 
     ${first&&third?`<div class="glow" style="margin-top:32px"></div>
     <div style="text-align:center;margin-top:12px">
-      <button onclick="openPodiumOverlay('${third}','${second}','${first}')" style="font-family:'Orbitron',sans-serif;font-size:.7rem;letter-spacing:3px;text-transform:uppercase;padding:12px 28px;background:linear-gradient(135deg,var(--gold),#bb9900);color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:700;box-shadow:0 0 20px rgba(255,214,0,.3)">🏆 VOIR LE PODIUM</button>
+      <button id="btn-podium" style="font-family:'Orbitron',sans-serif;font-size:.7rem;letter-spacing:3px;text-transform:uppercase;padding:12px 28px;background:linear-gradient(135deg,var(--gold),#bb9900);color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:700;box-shadow:0 0 20px rgba(255,214,0,.3)">🏆 VOIR LE PODIUM</button>
     </div>`:''}
   </div>
   `;
+
+  // Wire up podium button AFTER innerHTML is set (avoids ES module scope issue)
+  const btnPodium=document.getElementById('btn-podium');
+  if(btnPodium&&first&&third){
+    btnPodium.addEventListener('click',()=>openPodiumOverlay(third,second,first));
+  }
 }
 
 
@@ -549,6 +555,8 @@ function launchConfetti(){
     },i*25);
   }
 }
+
+window.openPodiumOverlay=openPodiumOverlay;
 
 
 </script>
