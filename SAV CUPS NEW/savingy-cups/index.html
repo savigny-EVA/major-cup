@@ -170,6 +170,12 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 #qr-widget .qr-box canvas,#qr-widget .qr-box img{display:block;width:96px!important;height:96px!important;}
 #qr-widget .qr-label{font-family:'Orbitron',sans-serif;font-size:.52rem;letter-spacing:2px;text-transform:uppercase;color:rgba(255,214,0,.7);text-align:center;}
 #qr-widget .qr-url{font-family:'Share Tech Mono',monospace;font-size:.5rem;color:rgba(255,255,255,.3);text-align:center;}
+
+#qr-widget{position:fixed;bottom:24px;right:24px;z-index:500;background:rgba(8,8,8,.95);border:1px solid rgba(224,90,58,.3);border-top:2px solid #E05A3A;padding:14px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;backdrop-filter:blur(8px);}
+#qr-widget .qr-box{background:#fff;padding:8px;}
+#qr-widget .qr-box canvas,#qr-widget .qr-box img{display:block;width:100px!important;height:100px!important;}
+#qr-widget .qr-label{font-family:'Orbitron',sans-serif;font-size:.5rem;letter-spacing:3px;text-transform:uppercase;color:#E05A3A;text-align:center;}
+#qr-widget .qr-url{font-family:'Share Tech Mono',monospace;font-size:.45rem;color:rgba(255,255,255,.3);text-align:center;letter-spacing:1px;}
 </style>
 </head>
 <body>
@@ -576,5 +582,16 @@ window.openPodiumOverlay=openPodiumOverlay;
 <script>
 new QRCode(document.getElementById('qr-box'),{text:'https://savigny-cups.netlify.app/captain.html',width:96,height:96,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});
 </script>
+
+<div id="qr-widget">
+  <div class="qr-label">Espace Capitaine</div>
+  <div class="qr-box" id="qr-box"></div>
+  <div class="qr-url">savigny-cups.netlify.app/captain.html</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+new QRCode(document.getElementById('qr-box'),{text:'https://savigny-cups.netlify.app/captain.html',width:100,height:100,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});
+</script>
+
 </body>
 </html>
